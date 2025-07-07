@@ -13,6 +13,8 @@ from lavis.common.dist_utils import main_process, get_rank
 from lavis.common.registry import registry
 from lavis.tasks.base_task import BaseTask
 from lavis.common.utils import is_convertible_to_int, is_url, cache_url
+from lavis.common.utils import get_cache_path
+from torchvision.datasets.utils import download_url
 
 @registry.register_task("captioning")
 class CaptionTask(BaseTask):
@@ -144,7 +146,8 @@ class CaptionTask(BaseTask):
 
         if self.annotation_file == None:
             # TODO better way to define this
-            coco_gt_root = os.path.join(registry.get_path("cache_root"), "coco_gt")
+            # coco_gt_root = os.path.join(registry.get_path("cache_root"), "coco_gt")
+            coco_gt_root = get_cache_path("coco/annotations")
             coco_val = coco_caption_eval(coco_gt_root, eval_result_file, split_name, img_ids=self.img_ids)
         else:
             coco_val = coco_caption_eval(None, eval_result_file, split_name, annotation_file=self.annotation_file, img_ids=self.img_ids)
@@ -221,23 +224,38 @@ from torchvision.datasets.utils import download_url
 
 def coco_caption_eval(coco_gt_root, results_file, split, annotation_file=None, img_ids=[]):
 
-    if annotation_file == None:
+    # if annotation_file == None:
+    #     urls = {
+    #         "val": "https://storage.googleapis.com/sfr-vision-language-research/datasets/coco_karpathy_val_gt.json",
+    #         "test": "https://storage.googleapis.com/sfr-vision-language-research/datasets/coco_karpathy_test_gt.json",
+    #     }
+    #     filenames = {
+    #         "val": "coco_karpathy_val_gt.json",
+    #         "test": "coco_karpathy_test_gt.json",
+    #     }
+
+    #     download_url(urls[split], coco_gt_root)
+
+    # Ground‐truth JSON 下载
+    if annotation_file is None:
         urls = {
-            "val": "https://storage.googleapis.com/sfr-vision-language-research/datasets/coco_karpathy_val_gt.json",
-            "test": "https://storage.googleapis.com/sfr-vision-language-research/datasets/coco_karpathy_test_gt.json",
+            "val":   "https://storage.googleapis.com/sfr-vision-language-research/datasets/coco_karpathy_val_gt.json",
+            "test":  "https://storage.googleapis.com/sfr-vision-language-research/datasets/coco_karpathy_test_gt.json",
         }
         filenames = {
-            "val": "coco_karpathy_val_gt.json",
+            "val":  "coco_karpathy_val_gt.json",
             "test": "coco_karpathy_test_gt.json",
         }
-
+        # 这里用 download_url(root=coco_gt_root)，get_cache_path 已确保根目录走 LAVIS_DATA_ROOT
         download_url(urls[split], coco_gt_root)
+
         annotation_file = os.path.join(coco_gt_root, filenames[split])
     if is_url(annotation_file):
         annotation_file = cache_url(annotation_file, registry.get_path("cache_root"))
         
     # create coco object and coco_result object
     coco = COCO(annotation_file)
+    coco.dataset.setdefault("info", {})
     coco_result = coco.loadRes(results_file)
 
     # create coco_eval object by taking coco and coco_result

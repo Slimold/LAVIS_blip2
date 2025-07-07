@@ -45,8 +45,15 @@ def is_url(url_or_filename):
     return parsed.scheme in ("http", "https")
 
 
+# def get_cache_path(rel_path):
+#     return os.path.expanduser(os.path.join(registry.get_path("cache_root"), rel_path))
 def get_cache_path(rel_path):
-    return os.path.expanduser(os.path.join(registry.get_path("cache_root"), rel_path))
+    # 优先用环境变量 LAVIS_DATA_ROOT，没设置才用 registry 里的 cache_root
+    cache_root = os.environ.get(
+        "LAVIS_DATA_ROOT",
+        registry.get_path("cache_root")
+    )
+    return os.path.expanduser(os.path.join(cache_root, rel_path))
 
 
 def get_abs_path(rel_path):

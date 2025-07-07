@@ -113,7 +113,9 @@ class BaseDatasetBuilder:
 
         splits = anns.keys()
 
-        cache_root = registry.get_path("cache_root")
+        # cache_root = registry.get_path("cache_root")
+        # cache_root = os.environ.get("LAVIS_DATA_ROOT",registry.get_path("cache_root"))
+        from lavis.common.utils import get_cache_path
 
         for split in splits:
             info = anns[split]
@@ -130,7 +132,8 @@ class BaseDatasetBuilder:
             for url_or_filename, storage_path in zip(urls, storage_paths):
                 # if storage_path is relative, make it full by prefixing with cache_root.
                 if not os.path.isabs(storage_path):
-                    storage_path = os.path.join(cache_root, storage_path)
+                    # storage_path = os.path.join(cache_root, storage_path)
+                    storage_path = get_cache_path(storage_path)
 
                 dirname = os.path.dirname(storage_path)
                 if not os.path.exists(dirname):
