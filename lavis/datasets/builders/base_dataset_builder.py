@@ -136,7 +136,6 @@ class BaseDatasetBuilder:
                     storage_path = get_cache_path(storage_path)
 
                 dirname = os.path.dirname(storage_path)
-                print("dirname:",dirname)
                 if not os.path.exists(dirname):
                     os.makedirs(dirname)
 
