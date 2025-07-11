@@ -150,18 +150,38 @@ class Blip2Qformer(Blip2Base):
         sim_t2i, _ = sim_t2q.max(-1)
         sim_t2i = sim_t2i / self.temp  # [batch_size, batch_size*num_gpu]
 
-        rank = dist.get_rank()
+        # rank = dist.get_rank()
+        rank = dist.get_rank() if dist.is_initialized() else 0
         bs = image.size(0)
         targets = torch.linspace(rank * bs, rank * bs + bs - 1, bs, dtype=int).to(
             image.device
         )
 
         if "image_id" in samples.keys(): #coco retrieval finetuning
-            image_ids = samples["image_id"].view(-1,1)
-            image_ids_all = concat_all_gather(image_ids)
+            # image_ids = samples["image_id"].view(-1,1)
+
+            # 确保 image_id 是张量
+            # if isinstance(samples["image_id"], list):
+            #     image_ids = torch.tensor(samples["image_id"]).view(-1,1)
+            # else:
+            #     image_ids = samples["image_id"].view(-1,1)
+
+            image_ids = samples["image_id"]
+            if isinstance(image_ids, list):           # DataLoader 给的是 list
+                image_ids = torch.tensor(image_ids, dtype=torch.long)
+            else:                                # 已经是 Tensor
+                image_ids = image_ids.to(dtype=torch.long)
+
+            # ***关键：放到 sim_t2i 同一设备（cuda）***
+            image_ids = image_ids.to(sim_t2i.device)
+            image_ids = image_ids.view(-1, 1)         # (B,1)
+            image_ids_all = concat_all_gather(image_ids)   # 现在不会再报错 
+
+            # image_ids_all = concat_all_gather(image_ids)
             pos_idx = torch.eq(image_ids, image_ids_all.t()).float()       
             sim_targets = pos_idx / pos_idx.sum(1,keepdim=True)   
             sim_targets = 0.9 * sim_targets + 0.1 * torch.ones_like(sim_targets) / sim_targets.size(1)
+            sim_targets = sim_targets.to(image_embeds.device)
 
             loss_t2i = -torch.sum(F.log_softmax(sim_t2i, dim=1)*sim_targets,dim=1).mean()
             loss_i2t = -torch.sum(F.log_softmax(sim_i2t, dim=1)*sim_targets,dim=1).mean()     

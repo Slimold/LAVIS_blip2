@@ -31,7 +31,7 @@ datasets:
           name: "blip_caption"
     build_info:
         images:
-            storage: '/export/share/datasets/vision/coco/images/'
+            storage: '/home/ucloud/datasets/coco/images'
 
 run:
   task: retrieval
